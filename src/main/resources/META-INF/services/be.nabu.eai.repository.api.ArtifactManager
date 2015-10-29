@@ -1,0 +1,3 @@
+be.nabu.eai.artifacts.datastore.provider.DatastoreProviderManager
+be.nabu.eai.artifacts.datastore.route.DatastoreRouteManager
+be.nabu.eai.artifacts.datastore.urn.URNProviderManager
