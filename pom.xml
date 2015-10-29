@@ -52,13 +52,7 @@
 			<version>1.1-SNAPSHOT</version>
 		</dependency>
 		
-		<!-- Indicate as provided -->
-		<dependency>
-			<groupId>be.nabu.libs.datastore</groupId>
-			<artifactId>datastore-api</artifactId>
-			<version>1.1-SNAPSHOT</version>
-			<scope>provided</scope>
-		</dependency>
+		<!-- indicate these as provided -->
 		<dependency>
 			<groupId>be.nabu.utils</groupId>
 			<artifactId>utils-io</artifactId>
