@@ -170,6 +170,10 @@ public class Datastore {
 
 	private String detectContext(String context) {
 		ServiceRuntime runtime = this.runtime;
+		// the runtime that is given is for _this_ service, we need the parent service
+		if (runtime != null && runtime.getParent() != null) {
+			runtime = runtime.getParent();
+		}
 		while (runtime != null) {
 			if (runtime.getService() instanceof DefinedService) {
 				context = ((DefinedService) runtime.getService()).getId();
