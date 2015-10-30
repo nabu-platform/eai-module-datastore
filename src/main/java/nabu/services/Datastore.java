@@ -69,8 +69,8 @@ public class Datastore {
 		
 		URI result;
 		// use the default provider
-		if (route.getConfiguration().getDatastoreProvider() == null) {
-			String url = route.getConfiguration().getProperties().get("url");
+		if (route == null || route.getConfiguration().getDatastoreProvider() == null) {
+			String url = route == null ? null : route.getConfiguration().getProperties().get("url");
 			logger.trace("Default datastore with url: " + url);
 			ResourceDatastore datastore = newResourceDatastore(url);
 			result = datastore.store(route.getConfiguration().getContext(), stream, name, contentType);
@@ -283,12 +283,7 @@ public class Datastore {
 							logger.error("Could not load: " + node, e);
 						} 
 					}
-					if (closest == null) {
-						throw new IllegalArgumentException("Context has no configured data route: " + context);
-					}
-					else {
-						routes.put(context, closest);
-					}
+					routes.put(context, closest);
 				}
 			}
 		}
