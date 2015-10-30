@@ -1,4 +1,4 @@
-package be.nabu.eai.artifacts.datastore.urn;
+package be.nabu.eai.modules.datastore.urn;
 
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.libs.resources.api.ResourceContainer;

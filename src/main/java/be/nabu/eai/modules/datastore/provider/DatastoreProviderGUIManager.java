@@ -1,4 +1,4 @@
-package be.nabu.eai.artifacts.datastore.provider;
+package be.nabu.eai.modules.datastore.provider;
 
 import java.io.IOException;
 import java.util.List;

@@ -1,4 +1,4 @@
-package be.nabu.eai.artifacts.datastore.route;
+package be.nabu.eai.modules.datastore.route;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -7,8 +7,8 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
-import be.nabu.eai.artifacts.datastore.provider.DatastoreProviderArtifact;
-import be.nabu.eai.artifacts.datastore.urn.URNProviderArtifact;
+import be.nabu.eai.modules.datastore.provider.DatastoreProviderArtifact;
+import be.nabu.eai.modules.datastore.urn.URNProviderArtifact;
 import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.eai.repository.util.KeyValueMapAdapter;
 
