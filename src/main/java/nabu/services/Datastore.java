@@ -265,6 +265,9 @@ public class Datastore {
 					for (Node node : EAIResourceRepository.getInstance().getNodes(DatastoreRouteArtifact.class)) {
 						try {
 							DatastoreRouteArtifact route = (DatastoreRouteArtifact) node.getArtifact();
+							if (!route.isStarted()) {
+								continue;
+							}
 							// a route without context matches all contexts
 							if (route.getConfiguration().getContext() == null) {
 								if (closest == null) {

@@ -13,17 +13,21 @@ import be.nabu.libs.resources.api.ResourceContainer;
 
 public class DatastoreRouteArtifact extends JAXBArtifact<DatastoreRouteConfiguration> implements StartableArtifact, StoppableArtifact {
 
+	private boolean enabled;
+	
 	public DatastoreRouteArtifact(String id, ResourceContainer<?> directory, Repository repository) {
 		super(id, directory, "datastore-route.xml", DatastoreRouteConfiguration.class);
 	}
 
 	@Override
 	public void start() throws IOException {
+		enabled = true;
 		reloadConfiguration();
 	}
 	
 	@Override
 	public void stop() throws IOException {
+		enabled = false;
 		reloadConfiguration();		
 	}
 
@@ -35,6 +39,10 @@ public class DatastoreRouteArtifact extends JAXBArtifact<DatastoreRouteConfigura
 	public void marshal(DatastoreRouteConfiguration configuration, OutputStream output) throws JAXBException {
 		super.marshal(configuration, output);
 	}
-	
+
+	@Override
+	public boolean isStarted() {
+		return enabled;
+	}
 	
 }
