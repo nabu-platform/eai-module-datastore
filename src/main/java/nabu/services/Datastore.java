@@ -14,9 +14,9 @@ import javax.jws.WebService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import be.nabu.eai.modules.datastore.provider.DatastoreProviderArtifact;
-import be.nabu.eai.modules.datastore.route.DatastoreRouteArtifact;
-import be.nabu.eai.modules.datastore.urn.URNProviderArtifact;
+import be.nabu.eai.module.datastore.provider.DatastoreProviderArtifact;
+import be.nabu.eai.module.datastore.route.DatastoreRouteArtifact;
+import be.nabu.eai.module.datastore.urn.URNProviderArtifact;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.util.SystemPrincipal;

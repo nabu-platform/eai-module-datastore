@@ -1,4 +1,4 @@
-package be.nabu.eai.modules.datastore.route;
+package be.nabu.eai.module.datastore.route;
 
 import java.io.IOException;
 import java.io.OutputStream;

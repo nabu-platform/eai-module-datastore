@@ -1,3 +1,3 @@
-be.nabu.eai.modules.datastore.provider.DatastoreProviderGUIManager
-be.nabu.eai.modules.datastore.route.DatastoreRouteGUIManager
-be.nabu.eai.modules.datastore.urn.URNProviderGUIManager
+be.nabu.eai.module.datastore.provider.DatastoreProviderGUIManager
+be.nabu.eai.module.datastore.route.DatastoreRouteGUIManager
+be.nabu.eai.module.datastore.urn.URNProviderGUIManager

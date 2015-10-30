@@ -1,4 +1,4 @@
-package be.nabu.eai.modules.datastore.provider;
+package be.nabu.eai.module.datastore.provider;
 
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;

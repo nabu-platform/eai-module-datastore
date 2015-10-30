@@ -1,4 +1,4 @@
-package be.nabu.eai.modules.datastore.route;
+package be.nabu.eai.module.datastore.route;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.developer.MainController;
 import be.nabu.eai.developer.managers.base.BaseJAXBGUIManager;
-import be.nabu.eai.modules.datastore.provider.DatastoreProviderArtifact;
+import be.nabu.eai.module.datastore.provider.DatastoreProviderArtifact;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.property.api.Property;
 import be.nabu.libs.property.api.Value;

@@ -1,4 +1,4 @@
-package be.nabu.eai.modules.datastore.urn;
+package be.nabu.eai.module.datastore.urn;
 
 import java.io.IOException;
 import java.util.List;

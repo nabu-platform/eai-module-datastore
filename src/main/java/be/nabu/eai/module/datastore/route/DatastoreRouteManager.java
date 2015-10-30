@@ -1,4 +1,4 @@
-package be.nabu.eai.modules.datastore.route;
+package be.nabu.eai.module.datastore.route;
 
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.managers.base.JAXBArtifactManager;
