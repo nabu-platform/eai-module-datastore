@@ -46,6 +46,7 @@ public class DatastoreRouteConfiguration {
 		// always has to have a value because it is then passed by reference to the maincontroller and the updates to it can be seen
 		if (properties == null) {
 			properties = new LinkedHashMap<String, String>();
+			properties.put("url", null);
 		}
 		return properties;
 	}

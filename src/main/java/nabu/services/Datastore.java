@@ -25,7 +25,7 @@ import be.nabu.libs.datastore.api.DataProperties;
 import be.nabu.libs.datastore.api.WritableDatastore;
 import be.nabu.libs.datastore.resources.DataRouter;
 import be.nabu.libs.datastore.resources.ResourceDatastore;
-import be.nabu.libs.datastore.resources.base.DataRouterBase;
+import be.nabu.libs.datastore.resources.context.StringContextBaseRouter;
 import be.nabu.libs.resources.URIUtils;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.DefinedService;
@@ -62,10 +62,13 @@ public class Datastore {
 		logger.debug("Storing data in context: " + context);
 		DatastoreRouteArtifact route = getRoute(context);
 		logger.trace("Chosen route: {}", route);
-		logger.trace("Available parameters in route: {}", route.getConfiguration().getProperties());
 		
-		ContextualURNManager urnManager = getURNManager(route.getConfiguration().getUrnProvider());
-		logger.trace("Chosen urn manager: {}", urnManager);
+		ContextualURNManager urnManager = null;
+		if (route != null) {
+			logger.trace("Available parameters in route: {}", route.getConfiguration().getProperties());
+			urnManager = getURNManager(route.getConfiguration().getUrnProvider());
+			logger.trace("Chosen urn manager: {}", urnManager);
+		}
 		
 		URI result;
 		// use the default provider
@@ -73,7 +76,7 @@ public class Datastore {
 			String url = route == null ? null : route.getConfiguration().getProperties().get("url");
 			logger.trace("Default datastore with url: " + url);
 			ResourceDatastore datastore = newResourceDatastore(url);
-			result = datastore.store(route.getConfiguration().getContext(), stream, name, contentType);
+			result = datastore.store(route == null ? context : route.getConfiguration().getContext(), stream, name, contentType);
 		}
 		else {
 			DefinedService storeService = route.getConfiguration().getDatastoreProvider().getConfiguration().getStoreService();
@@ -202,7 +205,7 @@ public class Datastore {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private ResourceDatastore newResourceDatastore(String url) throws URISyntaxException {
-		DataRouter router = url == null ? new DataRouterBase() : new DataRouterBase(new URI(URIUtils.encodeURI(url)));
+		DataRouter router = url == null ? new StringContextBaseRouter() : new StringContextBaseRouter(new URI(URIUtils.encodeURI(url)));
 		ResourceDatastore datastore = new ResourceDatastore(router);
 		datastore.setPrincipal(runtime.getExecutionContext().getSecurityContext().getPrincipal());
 		return datastore;
