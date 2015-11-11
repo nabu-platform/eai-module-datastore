@@ -77,5 +77,8 @@ public class DatastoreRouteGUIManager extends BaseJAXBGUIManager<DatastoreRouteC
 		}
 	}
 
-
+	@Override
+	public String getCategory() {
+		return "Datastore";
+	}
 }

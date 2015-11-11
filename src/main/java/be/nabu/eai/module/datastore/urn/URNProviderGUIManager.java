@@ -25,4 +25,8 @@ public class URNProviderGUIManager extends BaseJAXBGUIManager<URNProviderConfigu
 		return new URNProviderArtifact(entry.getId(), entry.getContainer());
 	}
 
+	@Override
+	public String getCategory() {
+		return "Datastore";
+	}
 }

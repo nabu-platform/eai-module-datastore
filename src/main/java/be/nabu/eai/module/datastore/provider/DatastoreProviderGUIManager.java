@@ -25,4 +25,8 @@ public class DatastoreProviderGUIManager extends BaseJAXBGUIManager<DatastorePro
 		return new DatastoreProviderArtifact(entry.getId(), entry.getContainer());
 	}
 
+	@Override
+	public String getCategory() {
+		return "Datastore";
+	}
 }
