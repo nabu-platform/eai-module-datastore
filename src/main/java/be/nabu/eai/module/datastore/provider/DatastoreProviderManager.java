@@ -12,7 +12,7 @@ public class DatastoreProviderManager extends JAXBArtifactManager<DatastoreProvi
 
 	@Override
 	protected DatastoreProviderArtifact newInstance(String id, ResourceContainer<?> container, Repository repository) {
-		return new DatastoreProviderArtifact(id, container);
+		return new DatastoreProviderArtifact(id, container, repository);
 	}
 
 }

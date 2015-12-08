@@ -22,7 +22,7 @@ public class DatastoreProviderGUIManager extends BaseJAXBGUIManager<DatastorePro
 
 	@Override
 	protected DatastoreProviderArtifact newInstance(MainController controller, RepositoryEntry entry, Value<?>... values) throws IOException {
-		return new DatastoreProviderArtifact(entry.getId(), entry.getContainer());
+		return new DatastoreProviderArtifact(entry.getId(), entry.getContainer(), entry.getRepository());
 	}
 
 	@Override

@@ -12,7 +12,7 @@ public class URNProviderManager extends JAXBArtifactManager<URNProviderConfigura
 
 	@Override
 	protected URNProviderArtifact newInstance(String id, ResourceContainer<?> container, Repository repository) {
-		return new URNProviderArtifact(id, container);
+		return new URNProviderArtifact(id, container, repository);
 	}
 
 }

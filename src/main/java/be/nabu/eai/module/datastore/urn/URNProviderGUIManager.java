@@ -22,7 +22,7 @@ public class URNProviderGUIManager extends BaseJAXBGUIManager<URNProviderConfigu
 
 	@Override
 	protected URNProviderArtifact newInstance(MainController controller, RepositoryEntry entry, Value<?>... values) throws IOException {
-		return new URNProviderArtifact(entry.getId(), entry.getContainer());
+		return new URNProviderArtifact(entry.getId(), entry.getContainer(), entry.getRepository());
 	}
 
 	@Override

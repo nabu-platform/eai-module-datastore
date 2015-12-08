@@ -16,7 +16,7 @@ public class DatastoreRouteArtifact extends JAXBArtifact<DatastoreRouteConfigura
 	private boolean enabled;
 	
 	public DatastoreRouteArtifact(String id, ResourceContainer<?> directory, Repository repository) {
-		super(id, directory, "datastore-route.xml", DatastoreRouteConfiguration.class);
+		super(id, directory, repository, "datastore-route.xml", DatastoreRouteConfiguration.class);
 	}
 
 	@Override
