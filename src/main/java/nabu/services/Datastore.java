@@ -225,7 +225,7 @@ public class Datastore {
 					if (forWriting && provider.getConfiguration().getStoreService() == null) {
 						throw new IllegalArgumentException("Datastore provider missing store service");
 					}
-					WritableDatastore datastore = POJOUtils.newProxy(WritableDatastore.class, null, 
+					WritableDatastore datastore = POJOUtils.newProxy(WritableDatastore.class,  
 						EAIResourceRepository.getInstance(), 
 						SystemPrincipal.ROOT, 
 						provider.getConfiguration().getPropertiesService(), 
@@ -252,7 +252,13 @@ public class Datastore {
 					if (provider.getConfiguration().getUrnResolver() == null) {
 						throw new IllegalArgumentException("URN provider missing urn resolver service");
 					}
-					ContextualURNManager manager = POJOUtils.newProxy(ContextualURNManager.class, null, EAIResourceRepository.getInstance(), SystemPrincipal.ROOT, provider.getConfiguration().getUrnCreator(), provider.getConfiguration().getUrnResolver());
+					ContextualURNManager manager = POJOUtils.newProxy(
+						ContextualURNManager.class, 
+						EAIResourceRepository.getInstance(), 
+						SystemPrincipal.ROOT, 
+						provider.getConfiguration().getUrnCreator(), 
+						provider.getConfiguration().getUrnResolver()
+					);
 					urnProviders.put(provider, manager);
 				}
 			}
