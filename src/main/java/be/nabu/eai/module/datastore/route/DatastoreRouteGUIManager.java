@@ -69,7 +69,6 @@ public class DatastoreRouteGUIManager extends BaseJAXBGUIManager<DatastoreRouteC
 					logger.error("Could not load properties for: " + provider.getId(), e);
 				}
 			}
-			System.out.println("SETTING PROPERTIES: " + properties);
 			getConfiguration(instance).setProperties(properties);
 		}
 		if (!"properties".equals(property.getName())) {
