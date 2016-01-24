@@ -32,7 +32,7 @@ public class DatastoreRouteArtifact extends JAXBArtifact<DatastoreRouteConfigura
 	}
 
 	private void reloadConfiguration() {
-		nabu.services.Datastore.refresh();
+		nabu.frameworks.datastore.Services.refresh();
 	}
 
 	@Override

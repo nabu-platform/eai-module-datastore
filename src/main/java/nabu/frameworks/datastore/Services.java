@@ -1,4 +1,4 @@
-package nabu.services;
+package nabu.frameworks.datastore;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,7 +37,7 @@ import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.Element;
 
 @WebService
-public class Datastore {
+public class Services {
 
 	private static Map<String, DatastoreRouteArtifact> routes = new HashMap<String, DatastoreRouteArtifact>();
 	private static Map<URNProviderArtifact, ContextualURNManager> urnProviders = new HashMap<URNProviderArtifact, ContextualURNManager>();
