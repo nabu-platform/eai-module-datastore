@@ -18,7 +18,6 @@ import be.nabu.eai.module.datastore.provider.DatastoreProviderArtifact;
 import be.nabu.eai.module.datastore.route.DatastoreRouteArtifact;
 import be.nabu.eai.module.datastore.urn.URNProviderArtifact;
 import be.nabu.eai.repository.EAIResourceRepository;
-import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.util.SystemPrincipal;
 import be.nabu.libs.datastore.api.ContextualURNManager;
 import be.nabu.libs.datastore.api.DataProperties;
@@ -271,9 +270,8 @@ public class Services {
 			synchronized(routes) {
 				if (!routes.containsKey(context)) {
 					DatastoreRouteArtifact closest = null;
-					for (Node node : EAIResourceRepository.getInstance().getNodes(DatastoreRouteArtifact.class)) {
+					for (DatastoreRouteArtifact route : EAIResourceRepository.getInstance().getArtifacts(DatastoreRouteArtifact.class)) {
 						try {
-							DatastoreRouteArtifact route = (DatastoreRouteArtifact) node.getArtifact();
 							if (!route.isStarted()) {
 								continue;
 							}
@@ -292,7 +290,7 @@ public class Services {
 							}
 						}
 						catch (Exception e) {
-							logger.error("Could not load: " + node, e);
+							logger.error("Could not load: " + route.getId(), e);
 						} 
 					}
 					routes.put(context, closest);
