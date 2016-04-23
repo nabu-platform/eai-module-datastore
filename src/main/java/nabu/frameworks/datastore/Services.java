@@ -20,6 +20,7 @@ import be.nabu.eai.module.datastore.urn.URNProviderArtifact;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.util.SystemPrincipal;
 import be.nabu.libs.datastore.api.ContextualURNManager;
+import be.nabu.libs.datastore.api.ContextualWritableDatastore;
 import be.nabu.libs.datastore.api.DataProperties;
 import be.nabu.libs.datastore.api.WritableDatastore;
 import be.nabu.libs.datastore.resources.DataRouter;
@@ -28,6 +29,7 @@ import be.nabu.libs.datastore.resources.context.StringContextBaseRouter;
 import be.nabu.libs.resources.URIUtils;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.DefinedService;
+import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.pojo.POJOUtils;
 import be.nabu.libs.types.TypeUtils;
@@ -298,5 +300,72 @@ public class Services {
 			}
 		}
 		return routes.get(context);
+	}
+
+	public static ContextualWritableDatastore<String> getAsDatastore(final ExecutionContext context) {
+		final DefinedService store = context.getServiceContext().getResolver(DefinedService.class).resolve("nabu.frameworks.datastore.Services.store");
+		final DefinedService retrieve = context.getServiceContext().getResolver(DefinedService.class).resolve("nabu.frameworks.datastore.Services.retrieve");
+		final DefinedService properties = context.getServiceContext().getResolver(DefinedService.class).resolve("nabu.frameworks.datastore.Services.properties");
+		return new ContextualWritableDatastore<String>() {
+			@Override
+			public URI store(InputStream input, String name, String contentType) throws IOException {
+				return store(null, input, name, contentType);
+			}
+			@Override
+			public InputStream retrieve(URI uri) throws IOException {
+				if (retrieve == null) {
+					throw new IllegalArgumentException("Could not find retrieve service");
+				}
+				ComplexContent input = retrieve.getServiceInterface().getInputDefinition().newInstance();
+				input.set("uri", uri);
+				ServiceRuntime runtime = new ServiceRuntime(retrieve, context);
+				try {
+					ComplexContent run = runtime.run(input);
+					return (InputStream) run.get("stream");
+				}
+				catch (ServiceException e) {
+					throw new RuntimeException(e);
+				}
+			}
+			@Override
+			public DataProperties getProperties(URI uri) throws IOException {
+				if (properties == null) {
+					throw new IllegalArgumentException("Could not find properties service");
+				}
+				ComplexContent input = properties.getServiceInterface().getInputDefinition().newInstance();
+				input.set("uri", uri);
+				try {
+					ServiceRuntime runtime = new ServiceRuntime(properties, context);
+					ComplexContent run = runtime.run(input);
+					return (DataProperties) run.get("properties");
+				}
+				catch (ServiceException e) {
+					throw new RuntimeException(e);
+				}
+			}
+			@Override
+			public URI store(String storeContext, InputStream stream, String name, String contentType) throws IOException {
+				if (store == null) {
+					throw new IllegalArgumentException("Could not find store service");
+				}
+				ComplexContent input = store.getServiceInterface().getInputDefinition().newInstance();
+				input.set("context", storeContext);
+				input.set("stream", stream);
+				input.set("name", name);
+				input.set("contentType", contentType);
+				try {
+					ServiceRuntime runtime = new ServiceRuntime(store, context);
+					ComplexContent run = runtime.run(input);
+					return (URI) run.get("uri");
+				}
+				catch (ServiceException e) {
+					throw new RuntimeException(e);
+				}
+			}
+			@Override
+			public Class<String> getContextClass() {
+				return String.class;
+			}
+		};
 	}
 }
