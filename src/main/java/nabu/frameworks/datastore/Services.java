@@ -208,7 +208,7 @@ public class Services {
 	private ResourceDatastore newResourceDatastore(String url) throws URISyntaxException {
 		DataRouter router = url == null ? new StringContextBaseRouter() : new StringContextBaseRouter(new URI(URIUtils.encodeURI(url)));
 		ResourceDatastore datastore = new ResourceDatastore(router);
-		datastore.setPrincipal(runtime.getExecutionContext().getSecurityContext().getPrincipal());
+		datastore.setPrincipal(runtime.getExecutionContext().getSecurityContext().getToken());
 		return datastore;
 	}
 	
