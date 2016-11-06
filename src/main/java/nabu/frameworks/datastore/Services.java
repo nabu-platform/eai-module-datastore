@@ -19,6 +19,7 @@ import be.nabu.eai.module.datastore.route.DatastoreRouteArtifact;
 import be.nabu.eai.module.datastore.urn.URNProviderArtifact;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.util.SystemPrincipal;
+import be.nabu.libs.datastore.DatastoreOutputStream;
 import be.nabu.libs.datastore.api.ContextualURNManager;
 import be.nabu.libs.datastore.api.ContextualWritableDatastore;
 import be.nabu.libs.datastore.api.DataProperties;
@@ -302,6 +303,20 @@ public class Services {
 		return routes.get(context);
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public static DatastoreOutputStream streamable(ServiceRuntime runtime, String context, String name, String contentType) throws URISyntaxException, IOException {
+		Services services = new Services();
+		services.runtime = runtime;
+		DatastoreRouteArtifact route = services.getRoute(context);
+		// the default provider supports streaming
+		if (route == null || route.getConfiguration().getDatastoreProvider() == null) {
+			String url = route == null ? null : route.getConfiguration().getProperties().get("url");
+			ResourceDatastore datastore = services.newResourceDatastore(url);
+			return datastore.stream(context, name, contentType);
+		}
+		return null;
+	}
+	
 	public static ContextualWritableDatastore<String> getAsDatastore(final ExecutionContext context) {
 		final DefinedService store = context.getServiceContext().getResolver(DefinedService.class).resolve("nabu.frameworks.datastore.Services.store");
 		final DefinedService retrieve = context.getServiceContext().getResolver(DefinedService.class).resolve("nabu.frameworks.datastore.Services.retrieve");
