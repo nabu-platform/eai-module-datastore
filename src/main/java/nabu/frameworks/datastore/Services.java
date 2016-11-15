@@ -110,6 +110,9 @@ public class Services {
 
 	@WebResult(name = "properties")
 	public DataProperties properties(@WebParam(name = "uri") URI uri) throws IOException, URISyntaxException, ServiceException {
+		if (uri == null) {
+			return null;
+		}
 		URI url = resolveURL(uri);
 		if (url.getScheme() == null) {
 			throw new IllegalArgumentException("Can not resolve a URL without scheme: " + url);
@@ -133,6 +136,9 @@ public class Services {
 	
 	@WebResult(name = "stream")
 	public InputStream retrieve(@WebParam(name="uri") URI uri) throws IOException, ServiceException, URISyntaxException {
+		if (uri == null) {
+			return null;
+		}
 		URI url = resolveURL(uri);
 		if (url.getScheme() == null) {
 			throw new IllegalArgumentException("Can not resolve a URL without scheme: " + url);
