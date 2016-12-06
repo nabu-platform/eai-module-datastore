@@ -59,7 +59,7 @@ public class Services {
 	@WebResult(name = "uri")
 	public URI store(@WebParam(name = "context") String context, @WebParam(name = "name") String name, @WebParam(name = "contentType") String contentType, @WebParam(name = "stream") InputStream stream) throws IOException, URISyntaxException, ServiceException {
 		if (context == null) {
-			context = detectContext(context);
+			context = detectContext(runtime);
 		}
 		logger.debug("Storing data in context: " + context);
 		DatastoreRouteArtifact route = getRoute(context);
@@ -179,16 +179,17 @@ public class Services {
 		return url;
 	}
 
-	private String detectContext(String context) {
-		ServiceRuntime runtime = this.runtime;
-		// the runtime that is given is for _this_ service, we need the parent service
-		if (runtime != null && runtime.getParent() != null) {
-			runtime = runtime.getParent();
+	private static String detectContext(ServiceRuntime runtime) {
+		// if the components know more, they can set a datastore context
+		String context = (String) runtime.getContext().get("datastore.context");
+		if (context != null) {
+			return context;
 		}
+		// go as far up the chain (towards the root) as possible
+		// don't just do getRoot() because in a very few cases it might not be a defined service
 		while (runtime != null) {
 			if (runtime.getService() instanceof DefinedService) {
 				context = ((DefinedService) runtime.getService()).getId();
-				break;
 			}
 			runtime = runtime.getParent();
 		}
@@ -311,6 +312,9 @@ public class Services {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static DatastoreOutputStream streamable(ServiceRuntime runtime, String context, String name, String contentType) throws URISyntaxException, IOException {
+		if (context == null) {
+			context = detectContext(runtime);
+		}
 		Services services = new Services();
 		services.runtime = runtime;
 		DatastoreRouteArtifact route = services.getRoute(context);
