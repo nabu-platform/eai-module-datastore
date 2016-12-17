@@ -1,11 +1,17 @@
 package nabu.frameworks.datastore;
 
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import javax.jws.WebParam;
 import javax.jws.WebResult;
@@ -29,6 +35,7 @@ import be.nabu.libs.datastore.resources.ResourceDatastore;
 import be.nabu.libs.datastore.resources.context.StringContextBaseRouter;
 import be.nabu.libs.resources.URIUtils;
 import be.nabu.libs.services.ServiceRuntime;
+import be.nabu.libs.services.ServiceUtils;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.ServiceException;
@@ -37,6 +44,7 @@ import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.Element;
+import be.nabu.utils.io.IOUtils;
 
 @WebService
 public class Services {
@@ -55,11 +63,60 @@ public class Services {
 		datastoreProviders.clear();
 	}
 	
+	@WebResult(name = "uri")
+	public URI zip(@WebParam(name = "context") String context, @WebParam(name = "name") String name, @WebParam(name = "uris") List<URI> uris) throws URISyntaxException, IOException, ServiceException {
+		if (context == null) {
+			context = ServiceUtils.getServiceContext(runtime);
+		}
+		if (uris == null || uris.isEmpty()) {
+			return null;
+		}
+		DatastoreOutputStream streamable = streamable(runtime, context, name, "application/zip");
+		ByteArrayOutputStream output = null;
+		ZipOutputStream zip;
+		if (streamable != null) {
+			zip = new ZipOutputStream(streamable);
+		}
+		else {
+			output = new ByteArrayOutputStream();
+			zip = new ZipOutputStream(output);
+		}
+		try {
+			for (URI uri : uris) {
+				if (uri == null) {
+					continue;
+				}
+				DataProperties properties = properties(uri);
+				InputStream input = retrieve(uri);
+				if (properties == null || input == null) {
+					throw new IllegalArgumentException("Can not resolve uri: " + uri);
+				}
+				try {
+					input = new BufferedInputStream(input);
+					ZipEntry entry = new ZipEntry(properties.getName());
+					zip.putNextEntry(entry);
+					IOUtils.copyBytes(IOUtils.wrap(input), IOUtils.wrap(zip));
+				}
+				finally {
+					input.close();
+				}
+			}
+		}
+		finally {
+			zip.close();
+		}
+		URI uri = streamable == null ? null : streamable.getURI();
+		if (uri == null && output != null) {
+			uri = store(context, name, "application/zip", new ByteArrayInputStream(output.toByteArray()));
+		}
+		return uri;
+	}
+	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@WebResult(name = "uri")
 	public URI store(@WebParam(name = "context") String context, @WebParam(name = "name") String name, @WebParam(name = "contentType") String contentType, @WebParam(name = "stream") InputStream stream) throws IOException, URISyntaxException, ServiceException {
 		if (context == null) {
-			context = detectContext(runtime);
+			context = ServiceUtils.getServiceContext(runtime);
 		}
 		logger.debug("Storing data in context: " + context);
 		DatastoreRouteArtifact route = getRoute(context);
@@ -157,7 +214,7 @@ public class Services {
 			}
 		}
 		// if we get here, no provider was found that can handle the scheme, try with the resource datastore
-		return newResourceDatastore(null).retrieve(url);
+		return new BufferedInputStream(newResourceDatastore(null).retrieve(url));
 	}
 
 	private URI resolveURL(URI uri) throws IOException {
@@ -177,26 +234,6 @@ public class Services {
 			throw new IllegalArgumentException("Could not resolve the uri: " + uri);
 		}
 		return url;
-	}
-
-	private static String detectContext(ServiceRuntime runtime) {
-		// if the components know more, they can set a datastore context
-		String context = (String) runtime.getContext().get("datastore.context");
-		if (context != null) {
-			return context;
-		}
-		// go as far up the chain (towards the root) as possible
-		// don't just do getRoot() because in a very few cases it might not be a defined service
-		while (runtime != null) {
-			if (runtime.getService() instanceof DefinedService) {
-				context = ((DefinedService) runtime.getService()).getId();
-			}
-			runtime = runtime.getParent();
-		}
-		if (context == null) {
-			throw new IllegalArgumentException("No context found");
-		}
-		return context;
 	}
 
 	private void setCustomProperties(DatastoreRouteArtifact route, ComplexContent input) throws IOException {
@@ -313,7 +350,7 @@ public class Services {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static DatastoreOutputStream streamable(ServiceRuntime runtime, String context, String name, String contentType) throws URISyntaxException, IOException {
 		if (context == null) {
-			context = detectContext(runtime);
+			context = ServiceUtils.getServiceContext(runtime);
 		}
 		Services services = new Services();
 		services.runtime = runtime;
