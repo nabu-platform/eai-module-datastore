@@ -7,6 +7,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
+import be.nabu.eai.api.EnvironmentSpecific;
 import be.nabu.eai.module.datastore.provider.DatastoreProviderArtifact;
 import be.nabu.eai.module.datastore.urn.URNProviderArtifact;
 import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
@@ -27,6 +28,7 @@ public class DatastoreRouteConfiguration {
 	public void setContext(String context) {
 		this.context = context;
 	}
+	@EnvironmentSpecific
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
 	public DatastoreProviderArtifact getDatastoreProvider() {
 		return datastoreProvider;
@@ -34,6 +36,7 @@ public class DatastoreRouteConfiguration {
 	public void setDatastoreProvider(DatastoreProviderArtifact datastoreProvider) {
 		this.datastoreProvider = datastoreProvider;
 	}
+	@EnvironmentSpecific
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
 	public URNProviderArtifact getUrnProvider() {
 		return urnProvider;
@@ -41,6 +44,7 @@ public class DatastoreRouteConfiguration {
 	public void setUrnProvider(URNProviderArtifact urnProvider) {
 		this.urnProvider = urnProvider;
 	}
+	@EnvironmentSpecific
 	@XmlJavaTypeAdapter(value = KeyValueMapAdapter.class)
 	public Map<String, String> getProperties() {
 		// always has to have a value because it is then passed by reference to the maincontroller and the updates to it can be seen
