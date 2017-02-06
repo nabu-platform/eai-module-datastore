@@ -10,13 +10,14 @@ import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.types.api.DefinedType;
 
 @XmlRootElement(name = "datastoreProvider")
-@XmlType(propOrder = { "scheme", "retrieveService", "propertiesService", "storeService", "configurationType" })
+@XmlType(propOrder = { "scheme", "retrieveService", "propertiesService", "storeService", "deleteService", "configurationType" })
 public class DatastoreProviderConfiguration {
 
 	private String scheme;
 	private DefinedService retrieveService;
 	private DefinedService propertiesService;
 	private DefinedService storeService;
+	private DefinedService deleteService;
 	private DefinedType configurationType;
 	
 	@InterfaceFilter(implement = "be.nabu.libs.datastore.api.Datastore.getProperties")
@@ -55,5 +56,13 @@ public class DatastoreProviderConfiguration {
 	}
 	public void setScheme(String scheme) {
 		this.scheme = scheme;
+	}
+	public DefinedService getDeleteService() {
+		return deleteService;
+	}
+	@InterfaceFilter(implement = "be.nabu.libs.datastore.api.DeletableDatastore.delete")
+	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
+	public void setDeleteService(DefinedService deleteService) {
+		this.deleteService = deleteService;
 	}
 }

@@ -164,6 +164,34 @@ public class Services {
 		logger.debug("Stored URI: {}", result);
 		return urnManager == null ? result : urnManager.map(context, result);
 	}
+	
+	public void delete(@WebParam(name = "uri") URI uri) throws IOException, URISyntaxException, ServiceException {
+		if (uri != null) {
+			URI url = resolveURL(uri);
+			if (url.getScheme() == null) {
+				throw new IllegalArgumentException("Can not resolve a URL without scheme: " + url);
+			}
+			boolean found = false;
+			for (DatastoreProviderArtifact provider : EAIResourceRepository.getInstance().getArtifacts(DatastoreProviderArtifact.class)) {
+				if (url.getScheme().equals(provider.getConfiguration().getScheme())) {
+					DefinedService deleteService = provider.getConfiguration().getDeleteService();
+					if (deleteService == null) {
+						throw new IllegalArgumentException("The datastore provider has no delete service configured: " + provider.getId());
+					}
+					ComplexContent input = deleteService.getServiceInterface().getInputDefinition().newInstance();
+					input.set("uri", url);
+					ServiceRuntime runtime = new ServiceRuntime(deleteService, this.runtime.getExecutionContext());
+					runtime.run(input);
+					found = true;
+					break;
+				}
+			}
+			// if no provider was found that can handle the scheme, try with the resource datastore
+			if (!found) {
+				newResourceDatastore(null).delete(url);
+			}
+		}
+	}
 
 	@WebResult(name = "properties")
 	public DataProperties properties(@WebParam(name = "uri") URI uri) throws IOException, URISyntaxException, ServiceException {
