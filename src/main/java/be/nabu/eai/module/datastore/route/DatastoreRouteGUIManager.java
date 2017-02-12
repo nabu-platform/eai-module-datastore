@@ -71,8 +71,13 @@ public class DatastoreRouteGUIManager extends BaseJAXBGUIManager<DatastoreRouteC
 			}
 			getConfiguration(instance).setProperties(properties);
 		}
+		// we don't want to update the properties as the map has to stay the same (reference-wise)
 		if (!"properties".equals(property.getName())) {
 			super.setValue(instance, property, value);
+		}
+		// we can however merge it
+		else if (value instanceof Map) {
+			getConfiguration(instance).getProperties().putAll(((Map<? extends String, ? extends String>) value));
 		}
 	}
 
