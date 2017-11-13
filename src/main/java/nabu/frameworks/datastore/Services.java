@@ -7,10 +7,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 import javax.jws.WebParam;
@@ -63,8 +66,40 @@ public class Services {
 		datastoreProviders.clear();
 	}
 	
+	@WebResult(name = "uris")
+	public List<URI> unzip(@WebParam(name = "context") String context, @WebParam(name = "stream") InputStream input, @WebParam(name = "fileNames") List<String> fileNames) throws IOException, URISyntaxException {
+		if (input == null) {
+			return null;
+		}
+		List<URI> uris = new ArrayList<URI>();
+		if (context == null) {
+			context = ServiceUtils.getServiceContext(runtime);
+		}
+		ZipInputStream zip = new ZipInputStream(new BufferedInputStream(input));
+		try {
+			ZipEntry entry = null;
+			while ((entry = zip.getNextEntry()) != null) {
+				if (fileNames == null || fileNames.isEmpty() || fileNames.contains(entry.getName())) {
+					String contentType = URLConnection.guessContentTypeFromName(entry.getName());
+					DatastoreOutputStream streamable = streamable(runtime, context, entry.getName(), contentType == null ? "application/octet-stream" : contentType);
+					try {
+						IOUtils.copyBytes(IOUtils.wrap(zip), IOUtils.wrap(streamable));
+					}
+					finally {
+						streamable.close();
+					}
+					uris.add(streamable.getURI());
+				}
+			}
+		}
+		finally {
+			zip.close();
+		}
+		return uris;
+	}
+	
 	@WebResult(name = "uri")
-	public URI zip(@WebParam(name = "context") String context, @WebParam(name = "name") String name, @WebParam(name = "uris") List<URI> uris) throws URISyntaxException, IOException, ServiceException {
+	public URI zip(@WebParam(name = "context") String context, @WebParam(name = "name") String name, @WebParam(name = "uris") List<URI> uris, @WebParam(name = "delete") Boolean delete) throws Exception {
 		if (context == null) {
 			context = ServiceUtils.getServiceContext(runtime);
 		}
@@ -82,18 +117,25 @@ public class Services {
 			zip = new ZipOutputStream(output);
 		}
 		try {
+			List<String> names = new ArrayList<String>();
 			for (URI uri : uris) {
 				if (uri == null) {
 					continue;
 				}
 				DataProperties properties = properties(uri);
-				InputStream input = retrieve(uri);
+				InputStream input = retrieve(uri, false);
 				if (properties == null || input == null) {
 					throw new IllegalArgumentException("Can not resolve uri: " + uri);
 				}
 				try {
 					input = new BufferedInputStream(input);
-					ZipEntry entry = new ZipEntry(properties.getName());
+					String entryName = properties.getName();
+					int counter = 1;
+					while (names.contains(entryName)) {
+						entryName = entryName.replaceFirst("[0-9]*(\\.[^.]+)$", counter++ + "$1");
+					}
+					names.add(entryName);
+					ZipEntry entry = new ZipEntry(entryName);
 					zip.putNextEntry(entry);
 					IOUtils.copyBytes(IOUtils.wrap(input), IOUtils.wrap(zip));
 				}
@@ -108,6 +150,25 @@ public class Services {
 		URI uri = streamable == null ? null : streamable.getURI();
 		if (uri == null && output != null) {
 			uri = store(context, name, "application/zip", new ByteArrayInputStream(output.toByteArray()));
+		}
+		if (delete != null && delete) {
+			Exception exception = null;
+			for (URI single : uris) {
+				try {
+					delete(single);
+				}
+				catch (Exception e) {
+					if (exception == null) {
+						exception = e;
+					}
+					else {
+						exception.addSuppressed(e);
+					}
+				}
+			}
+			if (exception != null) {
+				throw exception;
+			}
 		}
 		return uri;
 	}
@@ -220,7 +281,7 @@ public class Services {
 	}
 	
 	@WebResult(name = "stream")
-	public InputStream retrieve(@WebParam(name="uri") URI uri) throws IOException, ServiceException, URISyntaxException {
+	public InputStream retrieve(@WebParam(name="uri") final URI uri, @WebParam(name = "delete") Boolean delete) throws IOException, ServiceException, URISyntaxException {
 		if (uri == null) {
 			return null;
 		}
@@ -242,7 +303,89 @@ public class Services {
 			}
 		}
 		// if we get here, no provider was found that can handle the scheme, try with the resource datastore
-		return new BufferedInputStream(newResourceDatastore(null).retrieve(url));
+		final InputStream input = new BufferedInputStream(newResourceDatastore(null).retrieve(url));
+		if (delete != null && delete) {
+			return new InputStream() {
+				private boolean deleted = false;
+				
+				@Override
+				public int read(byte[] b) throws IOException {
+					int read = input.read(b);
+					if (read < 0) {
+						close();
+					}
+					return read;
+				}
+
+				@Override
+				public int read(byte[] b, int off, int len) throws IOException {
+					int read = input.read(b, off, len);
+					if (read < 0) {
+						close();
+					}
+					return read;
+				}
+
+				@Override
+				public long skip(long n) throws IOException {
+					long skip = input.skip(n);
+					if (skip == 0 && n > 0) {
+						close();
+					}
+					return skip;
+				}
+
+				@Override
+				public int available() throws IOException {
+					return input.available();
+				}
+
+				@Override
+				public void close() throws IOException {
+					try {
+						input.close();
+					}
+					finally {
+						try {
+							if (!deleted) {
+								deleted = true;
+								delete(uri);
+							}
+						}
+						catch (Exception e) {
+							throw new IOException("Could not delete resource: " + uri, e);
+						}
+					}
+				}
+
+				@Override
+				public synchronized void mark(int readlimit) {
+					input.mark(readlimit);
+				}
+
+				@Override
+				public synchronized void reset() throws IOException {
+					input.reset();
+				}
+
+				@Override
+				public boolean markSupported() {
+					return input.markSupported();
+				}
+
+				@Override
+				public int read() throws IOException {
+					int read = input.read();
+					if (read < 0) {
+						close();
+					}
+					return read;
+				}
+			};
+		}
+		else {
+			return input;
+		}
 	}
 
 	private URI resolveURL(URI uri) throws IOException {
