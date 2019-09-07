@@ -8,7 +8,10 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLConnection;
+import java.nio.charset.Charset;
+import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +22,7 @@ import java.util.zip.ZipOutputStream;
 import javax.jws.WebParam;
 import javax.jws.WebResult;
 import javax.jws.WebService;
+import javax.xml.bind.annotation.XmlRootElement;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +40,11 @@ import be.nabu.libs.datastore.api.WritableDatastore;
 import be.nabu.libs.datastore.resources.DataRouter;
 import be.nabu.libs.datastore.resources.ResourceDatastore;
 import be.nabu.libs.datastore.resources.context.StringContextBaseRouter;
+import be.nabu.libs.resources.ResourceFactory;
+import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.URIUtils;
+import be.nabu.libs.resources.api.Resource;
+import be.nabu.libs.resources.api.ResourceResolver;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.ServiceUtils;
 import be.nabu.libs.services.api.DefinedService;
@@ -47,11 +55,95 @@ import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.Element;
+import be.nabu.libs.types.binding.api.Window;
+import be.nabu.libs.types.binding.xml.XMLBinding;
+import be.nabu.libs.types.java.BeanInstance;
+import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.utils.io.IOUtils;
+import be.nabu.utils.io.api.ByteBuffer;
+import be.nabu.utils.io.api.WritableContainer;
 
 @WebService
 public class Services {
 
+	@XmlRootElement(name = "descriptor")
+	public static class ResourceDescriptors {
+		private List<ResourceDescriptor> resources = new ArrayList<Services.ResourceDescriptor>();
+
+		public List<ResourceDescriptor> getResources() {
+			return resources;
+		}
+		public void setResources(List<ResourceDescriptor> resources) {
+			this.resources = resources;
+		}
+	}
+	public static class ResourceDescriptor implements DataProperties {
+		private URI uri;
+		private long size;
+		private String name, contentType, entry;
+		private Date lastModified;
+		
+		public static ResourceDescriptor create(String entry, URI uri, DataProperties properties) {
+			ResourceDescriptor descriptor = new ResourceDescriptor();
+			descriptor.setEntry(entry);
+			descriptor.setUri(uri);
+			descriptor.setContentType(properties.getContentType());
+			descriptor.setLastModified(properties.getLastModified());
+			descriptor.setName(properties.getName());
+			descriptor.setSize(properties.getSize());
+			return descriptor;
+		}
+		@Override
+		public long getSize() {
+			return size;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+		@Override
+		public String getContentType() {
+			return contentType;
+		}
+
+		@Override
+		public Date getLastModified() {
+			return lastModified;
+		}
+
+		public URI getUri() {
+			return uri;
+		}
+
+		public void setUri(URI uri) {
+			this.uri = uri;
+		}
+
+		public void setSize(long size) {
+			this.size = size;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		public void setContentType(String contentType) {
+			this.contentType = contentType;
+		}
+
+		public void setLastModified(Date lastModified) {
+			this.lastModified = lastModified;
+		}
+		public String getEntry() {
+			return entry;
+		}
+		public void setEntry(String entry) {
+			this.entry = entry;
+		}
+		
+	}
+	
 	private static Map<String, DatastoreRouteArtifact> routes = new HashMap<String, DatastoreRouteArtifact>();
 	private static Map<URNProviderArtifact, ContextualURNManager> urnProviders = new HashMap<URNProviderArtifact, ContextualURNManager>();
 	private static Map<DatastoreProviderArtifact, WritableDatastore> datastoreProviders = new HashMap<DatastoreProviderArtifact, WritableDatastore>();
@@ -67,7 +159,7 @@ public class Services {
 	}
 	
 	@WebResult(name = "uris")
-	public List<URI> unzip(@WebParam(name = "context") String context, @WebParam(name = "stream") InputStream input, @WebParam(name = "fileNames") List<String> fileNames) throws IOException, URISyntaxException {
+	public List<URI> unzip(@WebParam(name = "context") String context, @WebParam(name = "stream") InputStream input, @WebParam(name = "fileNames") List<String> fileNames, @WebParam(name = "useDescription") Boolean useDescription) throws IOException, URISyntaxException, ParseException, ServiceException {
 		if (input == null) {
 			return null;
 		}
@@ -75,31 +167,97 @@ public class Services {
 		if (context == null) {
 			context = ServiceUtils.getServiceContext(runtime);
 		}
-		ZipInputStream zip = new ZipInputStream(new BufferedInputStream(input));
-		try {
-			ZipEntry entry = null;
-			while ((entry = zip.getNextEntry()) != null) {
-				if (fileNames == null || fileNames.isEmpty() || fileNames.contains(entry.getName())) {
-					String contentType = URLConnection.guessContentTypeFromName(entry.getName());
-					DatastoreOutputStream streamable = streamable(runtime, context, entry.getName(), contentType == null ? "application/octet-stream" : contentType);
-					try {
-						IOUtils.copyBytes(IOUtils.wrap(zip), IOUtils.wrap(streamable));
+		if (useDescription != null && useDescription) {
+			DatastoreOutputStream streamable = streamable(runtime, context, "temporary-zip.zip", "application/zip");
+			try {
+				IOUtils.copyBytes(IOUtils.wrap(new BufferedInputStream(input)), IOUtils.wrap(streamable));
+			}
+			finally {
+				streamable.close();
+			}
+			URI zipUri = streamable.getURI();
+			
+			try {
+				ResourceDescriptors description = null;
+				ZipInputStream zip = new ZipInputStream(retrieve(zipUri, false));
+				try {
+					ZipEntry entry = null;
+					while ((entry = zip.getNextEntry()) != null) {
+						if (entry.getName().equals(".description.xml")) {
+							XMLBinding binding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(ResourceDescriptors.class), Charset.forName("UTF-8"));
+							description = TypeUtils.getAsBean(binding.unmarshal(zip, new Window[0]), ResourceDescriptors.class);
+							break;
+						}
 					}
-					finally {
-						streamable.close();
+				}
+				finally {
+					zip.close();
+				}
+				if (description == null) {
+					throw new IllegalStateException("Could not find .description.xml");
+				}
+				Map<String, ResourceDescriptor> map = new HashMap<String, Services.ResourceDescriptor>();
+				for (ResourceDescriptor descriptor : description.getResources()) {
+					map.put(descriptor.getEntry(), descriptor);
+				}
+				zip = new ZipInputStream(retrieve(zipUri, false));
+				try {
+					ZipEntry entry = null;
+					while ((entry = zip.getNextEntry()) != null) {
+						if (entry.getName().equals(".description.xml")) {
+							continue;
+						}
+						if (fileNames == null || fileNames.isEmpty() || fileNames.contains(entry.getName())) {
+							ResourceDescriptor descriptor = map.get(entry.getName());
+							if (descriptor == null) {
+								throw new IllegalStateException("Could not find description for entry: " + entry.getName());
+							}
+							WritableContainer<ByteBuffer> writableContainer = ResourceUtils.toWritableContainer(descriptor.getUri(), null);
+							try {
+								IOUtils.copyBytes(IOUtils.wrap(zip), writableContainer);
+							}
+							finally {
+								writableContainer.close();
+							}
+							uris.add(descriptor.getUri());
+						}
 					}
-					uris.add(streamable.getURI());
+				}
+				finally {
+					zip.close();
 				}
 			}
+			finally {
+				delete(zipUri);
+			}
 		}
-		finally {
-			zip.close();
+		else {
+			ZipInputStream zip = new ZipInputStream(new BufferedInputStream(input));
+			try {
+				ZipEntry entry = null;
+				while ((entry = zip.getNextEntry()) != null) {
+					if (fileNames == null || fileNames.isEmpty() || fileNames.contains(entry.getName())) {
+						String contentType = URLConnection.guessContentTypeFromName(entry.getName());
+						DatastoreOutputStream streamable = streamable(runtime, context, entry.getName(), contentType == null ? "application/octet-stream" : contentType);
+						try {
+							IOUtils.copyBytes(IOUtils.wrap(zip), IOUtils.wrap(streamable));
+						}
+						finally {
+							streamable.close();
+						}
+						uris.add(streamable.getURI());
+					}
+				}
+			}
+			finally {
+				zip.close();
+			}
 		}
 		return uris;
 	}
 	
 	@WebResult(name = "uri")
-	public URI zip(@WebParam(name = "context") String context, @WebParam(name = "name") String name, @WebParam(name = "uris") List<URI> uris, @WebParam(name = "delete") Boolean delete) throws Exception {
+	public URI zip(@WebParam(name = "context") String context, @WebParam(name = "name") String name, @WebParam(name = "uris") List<URI> uris, @WebParam(name = "delete") Boolean delete, @WebParam(name = "describe") Boolean describe) throws Exception {
 		if (context == null) {
 			context = ServiceUtils.getServiceContext(runtime);
 		}
@@ -109,6 +267,7 @@ public class Services {
 		DatastoreOutputStream streamable = streamable(runtime, context, name, "application/zip");
 		ByteArrayOutputStream output = null;
 		ZipOutputStream zip;
+		ResourceDescriptors descriptor = describe != null && describe ? new ResourceDescriptors() : null;
 		if (streamable != null) {
 			zip = new ZipOutputStream(streamable);
 		}
@@ -135,6 +294,9 @@ public class Services {
 						entryName = entryName.replaceFirst("[0-9]*(\\.[^.]+)$", counter++ + "$1");
 					}
 					names.add(entryName);
+					if (descriptor != null) {
+						descriptor.getResources().add(ResourceDescriptor.create(entryName, uri, properties));
+					}
 					ZipEntry entry = new ZipEntry(entryName);
 					zip.putNextEntry(entry);
 					IOUtils.copyBytes(IOUtils.wrap(input), IOUtils.wrap(zip));
@@ -142,6 +304,13 @@ public class Services {
 				finally {
 					input.close();
 				}
+			}
+			if (descriptor != null) {
+				BeanInstance<ResourceDescriptors> beanInstance = new BeanInstance<ResourceDescriptors>(descriptor);
+				XMLBinding binding = new XMLBinding(beanInstance.getType(), Charset.forName("UTF-8"));
+				ZipEntry entry = new ZipEntry(".description.xml");
+				zip.putNextEntry(entry);
+				binding.marshal(zip, beanInstance);
 			}
 		}
 		finally {
