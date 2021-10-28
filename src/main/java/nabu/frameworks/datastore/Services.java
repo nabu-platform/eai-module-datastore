@@ -43,6 +43,7 @@ import be.nabu.libs.datastore.resources.context.StringContextBaseRouter;
 import be.nabu.libs.resources.ResourceFactory;
 import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.URIUtils;
+import be.nabu.libs.resources.alias.AliasResourceResolver;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceResolver;
 import be.nabu.libs.services.ServiceRuntime;
@@ -591,6 +592,13 @@ public class Services {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private ResourceDatastore newResourceDatastore(String url) throws URISyntaxException {
+		// if we have no url but you have defined a data alias, we'll use that
+		if (url == null) {
+			URI uri = AliasResourceResolver.getAliases().get("data");
+			if (uri != null) {
+				url = URIUtils.getChild(uri, "datastore").toASCIIString();
+			}
+		}
 		DataRouter router = url == null ? new StringContextBaseRouter() : new StringContextBaseRouter(new URI(URIUtils.encodeURI(url)));
 		ResourceDatastore datastore = new ResourceDatastore(router);
 		datastore.setPrincipal(runtime.getExecutionContext().getSecurityContext().getToken());
