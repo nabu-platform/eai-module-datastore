@@ -40,12 +40,9 @@ import be.nabu.libs.datastore.api.WritableDatastore;
 import be.nabu.libs.datastore.resources.DataRouter;
 import be.nabu.libs.datastore.resources.ResourceDatastore;
 import be.nabu.libs.datastore.resources.context.StringContextBaseRouter;
-import be.nabu.libs.resources.ResourceFactory;
 import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.URIUtils;
 import be.nabu.libs.resources.alias.AliasResourceResolver;
-import be.nabu.libs.resources.api.Resource;
-import be.nabu.libs.resources.api.ResourceResolver;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.ServiceUtils;
 import be.nabu.libs.services.api.DefinedService;
@@ -80,7 +77,7 @@ public class Services {
 	}
 	public static class ResourceDescriptor implements DataProperties {
 		private URI uri;
-		private long size;
+		private Long size;
 		private String name, contentType, entry;
 		private Date lastModified;
 		
@@ -95,7 +92,7 @@ public class Services {
 			return descriptor;
 		}
 		@Override
-		public long getSize() {
+		public Long getSize() {
 			return size;
 		}
 
@@ -121,7 +118,7 @@ public class Services {
 			this.uri = uri;
 		}
 
-		public void setSize(long size) {
+		public void setSize(Long size) {
 			this.size = size;
 		}
 
@@ -443,7 +440,11 @@ public class Services {
 				input.set("uri", url);
 				ServiceRuntime runtime = new ServiceRuntime(propertiesService, this.runtime.getExecutionContext());
 				ComplexContent run = runtime.run(input);
-				return (DataProperties) run.get("properties");
+				Object object = run.get("properties");
+				if (object instanceof BeanInstance) {
+					object = ((BeanInstance<?>) object).getUnwrapped();
+				}
+				return (DataProperties) object;
 			}
 		}
 		// if we get here, no provider was found that can handle the scheme, try with the resource datastore
