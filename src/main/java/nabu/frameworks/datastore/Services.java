@@ -11,7 +11,6 @@ import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +21,6 @@ import java.util.zip.ZipOutputStream;
 import javax.jws.WebParam;
 import javax.jws.WebResult;
 import javax.jws.WebService;
-import javax.xml.bind.annotation.XmlRootElement;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +34,7 @@ import be.nabu.libs.datastore.DatastoreOutputStream;
 import be.nabu.libs.datastore.api.ContextualURNManager;
 import be.nabu.libs.datastore.api.ContextualWritableDatastore;
 import be.nabu.libs.datastore.api.DataProperties;
+import be.nabu.libs.datastore.api.UpdatableURNManager;
 import be.nabu.libs.datastore.api.WritableDatastore;
 import be.nabu.libs.datastore.resources.DataRouter;
 import be.nabu.libs.datastore.resources.ResourceDatastore;
@@ -60,88 +59,13 @@ import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.WritableContainer;
+import nabu.frameworks.datastore.types.ResourceDescriptor;
+import nabu.frameworks.datastore.types.ResourceDescriptors;
+import nabu.frameworks.datastore.types.ZIPResult;
 
 @WebService
 public class Services {
 
-	@XmlRootElement(name = "descriptor")
-	public static class ResourceDescriptors {
-		private List<ResourceDescriptor> resources = new ArrayList<Services.ResourceDescriptor>();
-
-		public List<ResourceDescriptor> getResources() {
-			return resources;
-		}
-		public void setResources(List<ResourceDescriptor> resources) {
-			this.resources = resources;
-		}
-	}
-	public static class ResourceDescriptor implements DataProperties {
-		private URI uri;
-		private Long size;
-		private String name, contentType, entry;
-		private Date lastModified;
-		
-		public static ResourceDescriptor create(String entry, URI uri, DataProperties properties) {
-			ResourceDescriptor descriptor = new ResourceDescriptor();
-			descriptor.setEntry(entry);
-			descriptor.setUri(uri);
-			descriptor.setContentType(properties.getContentType());
-			descriptor.setLastModified(properties.getLastModified());
-			descriptor.setName(properties.getName());
-			descriptor.setSize(properties.getSize());
-			return descriptor;
-		}
-		@Override
-		public Long getSize() {
-			return size;
-		}
-
-		@Override
-		public String getName() {
-			return name;
-		}
-		@Override
-		public String getContentType() {
-			return contentType;
-		}
-
-		@Override
-		public Date getLastModified() {
-			return lastModified;
-		}
-
-		public URI getUri() {
-			return uri;
-		}
-
-		public void setUri(URI uri) {
-			this.uri = uri;
-		}
-
-		public void setSize(Long size) {
-			this.size = size;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
-
-		public void setContentType(String contentType) {
-			this.contentType = contentType;
-		}
-
-		public void setLastModified(Date lastModified) {
-			this.lastModified = lastModified;
-		}
-		public String getEntry() {
-			return entry;
-		}
-		public void setEntry(String entry) {
-			this.entry = entry;
-		}
-		
-	}
-	
 	private static Map<String, DatastoreRouteArtifact> routes = new HashMap<String, DatastoreRouteArtifact>();
 	private static Map<URNProviderArtifact, ContextualURNManager> urnProviders = new HashMap<URNProviderArtifact, ContextualURNManager>();
 	private static Map<DatastoreProviderArtifact, WritableDatastore> datastoreProviders = new HashMap<DatastoreProviderArtifact, WritableDatastore>();
@@ -154,6 +78,12 @@ public class Services {
 		routes.clear();
 		urnProviders.clear();
 		datastoreProviders.clear();
+	}
+	
+	public static Services getInstance(ServiceRuntime runtime) {
+		Services services = new Services();
+		services.runtime = runtime;
+		return services;
 	}
 	
 	@WebResult(name = "uris")
@@ -194,7 +124,7 @@ public class Services {
 				if (description == null) {
 					throw new IllegalStateException("Could not find .description.xml");
 				}
-				Map<String, ResourceDescriptor> map = new HashMap<String, Services.ResourceDescriptor>();
+				Map<String, ResourceDescriptor> map = new HashMap<String, ResourceDescriptor>();
 				for (ResourceDescriptor descriptor : description.getResources()) {
 					map.put(descriptor.getEntry(), descriptor);
 				}
@@ -254,18 +184,19 @@ public class Services {
 		return uris;
 	}
 	
-	@WebResult(name = "uri")
-	public URI zip(@WebParam(name = "context") String context, @WebParam(name = "name") String name, @WebParam(name = "uris") List<URI> uris, @WebParam(name = "delete") Boolean delete, @WebParam(name = "describe") Boolean describe) throws Exception {
+	@WebResult(name = "zip")
+	public ZIPResult zip(@WebParam(name = "context") String context, @WebParam(name = "name") String name, @WebParam(name = "uris") List<URI> uris, @WebParam(name = "delete") Boolean delete, @WebParam(name = "describe") Boolean describe) throws Exception {
 		if (context == null) {
 			context = ServiceUtils.getServiceContext(runtime);
 		}
 		if (uris == null || uris.isEmpty()) {
 			return null;
 		}
+		ZIPResult result = new ZIPResult();
 		DatastoreOutputStream streamable = streamable(runtime, context, name, "application/zip");
 		ByteArrayOutputStream output = null;
 		ZipOutputStream zip;
-		ResourceDescriptors descriptor = describe != null && describe ? new ResourceDescriptors() : null;
+		ResourceDescriptors descriptor = new ResourceDescriptors();
 		if (streamable != null) {
 			zip = new ZipOutputStream(streamable);
 		}
@@ -292,9 +223,7 @@ public class Services {
 						entryName = entryName.replaceFirst("[0-9]*(\\.[^.]+)$", counter++ + "$1");
 					}
 					names.add(entryName);
-					if (descriptor != null) {
-						descriptor.getResources().add(ResourceDescriptor.create(entryName, uri, properties));
-					}
+					descriptor.getResources().add(ResourceDescriptor.create(entryName, uri, properties));
 					ZipEntry entry = new ZipEntry(entryName);
 					zip.putNextEntry(entry);
 					IOUtils.copyBytes(IOUtils.wrap(input), IOUtils.wrap(zip));
@@ -303,7 +232,7 @@ public class Services {
 					input.close();
 				}
 			}
-			if (descriptor != null) {
+			if (describe != null && describe) {
 				BeanInstance<ResourceDescriptors> beanInstance = new BeanInstance<ResourceDescriptors>(descriptor);
 				XMLBinding binding = new XMLBinding(beanInstance.getType(), Charset.forName("UTF-8"));
 				ZipEntry entry = new ZipEntry(".description.xml");
@@ -337,7 +266,9 @@ public class Services {
 				throw exception;
 			}
 		}
-		return uri;
+		result.setUri(uri);
+		result.setDescriptors(descriptor.getResources());
+		return result;
 	}
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -449,6 +380,14 @@ public class Services {
 		}
 		// if we get here, no provider was found that can handle the scheme, try with the resource datastore
 		return newResourceDatastore(null).getProperties(url);
+	}
+	
+	public void move(@WebParam(name="urn") final URI urn, @WebParam(name="url") final URI url) {
+		for (URNProviderArtifact provider : EAIResourceRepository.getInstance().getArtifacts(URNProviderArtifact.class)) {
+			if (provider instanceof UpdatableURNManager) {
+				((UpdatableURNManager) provider).update(urn, url);
+			}
+		}
 	}
 	
 	@WebResult(name = "stream")
